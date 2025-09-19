@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JLPT N4 Japanese Flashcards</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', 'Noto Sans JP', sans-serif;
+        }
+        .flashcard-container {
+            perspective: 1000px;
+        }
+        .flashcard {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            transform-style: preserve-3d;
+            transition: transform 0.6s;
+        }
+        .flashcard.is-flipped {
+            transform: rotateY(180deg);
+        }
+        .flashcard-face {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            -webkit-backface-visibility: hidden; /* Safari */
+            border-radius: 1rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        }
+        .flashcard-front {
+            background-color: #ffffff;
+        }
+        .flashcard-back {
+            background-color: #f0f9ff;
+            transform: rotateY(180deg);
+        }
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        .loader {
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #3498db;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 flex flex-col min-h-screen">
+    <header class="bg-white shadow-md">
+        <div class="container mx-auto px-4 py-4 flex justify-between items-center">
+            <h1 class="text-2xl font-bold text-sky-600">JLPT N4 Flashcards</h1>
+        </div>
+    </header>
+
+    <main id="app" class="container mx-auto p-4 flex-grow flex flex-col">
+        <!-- Loader -->
+        <div id="loader" class="flex-grow flex justify-center items-center">
+            <div class="text-center">
+                <div class="loader mx-auto"></div>
+                <p class="mt-4 text-slate-500">Loading Vocabulary...</p>
+            </div>
+        </div>
+
+        <!-- Category Selection Screen -->
+        <div id="category-screen" class="hidden">
+             <h2 class="text-xl font-semibold text-center mb-2">Pilih Kategori</h2>
+             <p class="text-slate-500 text-center mb-6">Pilih kategori kosakata yang ingin kamu pelajari.</p>
+            <div id="category-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                <!-- Categories will be injected here -->
+            </div>
+        </div>
+
+        <!-- Flashcard Screen -->
+        <div id="flashcard-screen" class="hidden flex-grow flex flex-col items-center justify-center">
+            <div class="w-full max-w-md mx-auto">
+                 <button id="back-to-categories" class="mb-4 text-sky-600 hover:text-sky-800 font-medium transition-colors">&larr; Kembali ke Kategori</button>
+                <div id="flashcard-container" class="flashcard-container h-64 sm:h-72 cursor-pointer mb-4">
+                    <div id="flashcard" class="flashcard">
+                        <div class="flashcard-face flashcard-front p-4">
+                            <p id="kanji" class="text-5xl md:text-6xl font-bold mb-2"></p>
+                            <p id="kana" class="text-xl text-slate-500"></p>
+                        </div>
+                        <div class="flashcard-face flashcard-back p-4 text-center">
+                            <p id="romaji" class="text-2xl font-semibold text-sky-700"></p>
+                            <p id="meaning" class="text-lg mt-2 text-slate-600"></p>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="progress-container" class="text-center mb-4">
+                     <p id="progress-text" class="text-slate-600">1 / 100</p>
+                     <div class="w-full bg-slate-200 rounded-full h-2.5 mt-1">
+                         <div id="progress-bar" class="bg-sky-500 h-2.5 rounded-full" style="width: 1%"></div>
+                     </div>
+                </div>
+
+                <div class="flex justify-center items-center space-x-4">
+                    <button id="prev-card" class="bg-white hover:bg-slate-100 text-slate-700 font-bold py-3 px-6 rounded-lg shadow transition-transform transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed">Prev</button>
+                    <button id="shuffle-deck" class="bg-sky-500 hover:bg-sky-600 text-white font-bold p-4 rounded-full shadow-lg transition-transform transform active:scale-95" aria-label="Shuffle Deck">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-shuffle"><polyline points="16 3 21 3 21 8"></polyline><line x1="4" y1="20" x2="21" y2="3"></line><polyline points="21 16 21 21 16 21"></polyline><line x1="15" y1="15" x2="21" y2="21"></line><line x1="4" y1="4" x2="9" y2="9"></line></svg>
+                    </button>
+                    <button id="next-card" class="bg-white hover:bg-slate-100 text-slate-700 font-bold py-3 px-6 rounded-lg shadow transition-transform transform active:scale-95">Next</button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="bg-white mt-8 py-4">
+        <div class="container mx-auto px-4 text-center text-slate-500 text-sm">
+            <p>&copy; 2025 Japanese Learning Tools. Happy learning!</p>
+        </div>
+    </footer>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+
+    const appState = {
+        vocabulary: [],
+        categories: {},
+        currentDeck: [],
+        currentIndex: 0,
+        isFlipped: false,
+    };
+
+    // --- DOM Elements ---
+    const loader = document.getElementById('loader');
+    const categoryScreen = document.getElementById('category-screen');
+    const flashcardScreen = document.getElementById('flashcard-screen');
+    const categoryGrid = document.getElementById('category-grid');
+    const flashcardContainer = document.getElementById('flashcard-container');
+    const flashcard = document.getElementById('flashcard');
+    const backToCategoriesBtn = document.getElementById('back-to-categories');
+    
+    // Card face elements
+    const kanjiEl = document.getElementById('kanji');
+    const kanaEl = document.getElementById('kana');
+    const romajiEl = document.getElementById('romaji');
+    const meaningEl = document.getElementById('meaning');
+
+    // Controls
+    const prevCardBtn = document.getElementById('prev-card');
+    const nextCardBtn = document.getElementById('next-card');
+    const shuffleDeckBtn = document.getElementById('shuffle-deck');
+    
+    // Progress
+    const progressText = document.getElementById('progress-text');
+    const progressBar = document.getElementById('progress-bar');
+    
+    // --- Data Loading and Initialization ---
+    async function loadVocabulary() {
+        try {
+            // In a real-world scenario, this would be a fetch call to a JSON file or an API.
+            // For this self-contained app, the data is included directly.
+            const data = getVocabularyData();
+            appState.vocabulary = data;
+            
+            // Process categories
+            appState.categories = appState.vocabulary.reduce((acc, word) => {
+                if (!acc[word.category]) {
+                    acc[word.category] = [];
+                }
+                acc[word.category].push(word);
+                return acc;
+            }, {});
+
+            displayCategories();
+            showScreen('category');
+        } catch (error) {
+            console.error("Failed to load vocabulary:", error);
+            loader.innerHTML = '<p class="text-red-500">Gagal memuat kosakata. Silakan coba lagi nanti.</p>';
+        }
+    }
+
+    // --- UI Update Functions ---
+    function showScreen(screenName) {
+        loader.classList.add('hidden');
+        categoryScreen.classList.add('hidden');
+        flashcardScreen.classList.add('hidden');
+
+        if (screenName === 'category') {
+            categoryScreen.classList.remove('hidden');
+        } else if (screenName === 'flashcard') {
+            flashcardScreen.classList.remove('hidden');
+            flashcardScreen.classList.add('flex');
+        }
+    }
+
+    function displayCategories() {
+        categoryGrid.innerHTML = '';
+        const categoryColors = [
+            'bg-sky-100 text-sky-800', 'bg-emerald-100 text-emerald-800',
+            'bg-amber-100 text-amber-800', 'bg-rose-100 text-rose-800',
+            'bg-indigo-100 text-indigo-800', 'bg-pink-100 text-pink-800',
+            'bg-teal-100 text-teal-800', 'bg-purple-100 text-purple-800',
+            'bg-lime-100 text-lime-800', 'bg-cyan-100 text-cyan-800'
+        ];
+        
+        let colorIndex = 0;
+        for (const categoryName in appState.categories) {
+            const count = appState.categories[categoryName].length;
+            const card = document.createElement('button');
+            card.className = `p-4 rounded-lg shadow-sm text-left transition-transform transform hover:scale-105 active:scale-95 ${categoryColors[colorIndex % categoryColors.length]}`;
+            card.innerHTML = `
+                <h3 class="font-bold text-lg">${categoryName}</h3>
+                <p class="text-sm opacity-80">${count} kata</p>
+            `;
+            card.dataset.category = categoryName;
+            card.addEventListener('click', () => selectCategory(categoryName));
+            categoryGrid.appendChild(card);
+            colorIndex++;
+        }
+    }
+
+    function updateFlashcard() {
+        if (appState.currentDeck.length === 0) return;
+
+        // Reset flip state
+        if (appState.isFlipped) {
+            flashcard.classList.remove('is-flipped');
+            appState.isFlipped = false;
+        }
+
+        const word = appState.currentDeck[appState.currentIndex];
+        kanjiEl.textContent = word.kanji || word.kana;
+        kanaEl.textContent = word.kanji ? word.kana : ''; // Show kana only if kanji exists
+        romajiEl.textContent = word.romaji;
+        meaningEl.textContent = word.meaning_id;
+
+        updateProgress();
+        updateNavButtons();
+    }
+
+    function updateProgress() {
+        const total = appState.currentDeck.length;
+        const current = appState.currentIndex + 1;
+        progressText.textContent = `${current} / ${total}`;
+        const percentage = total > 0 ? (current / total) * 100 : 0;
+        progressBar.style.width = `${percentage}%`;
+    }
+
+    function updateNavButtons() {
+        prevCardBtn.disabled = appState.currentIndex === 0;
+        nextCardBtn.disabled = appState.currentIndex === appState.currentDeck.length - 1;
+    }
+
+    // --- Event Handlers & Logic ---
+    function selectCategory(categoryName) {
+        appState.currentDeck = [...appState.categories[categoryName]]; // Create a copy
+        appState.currentIndex = 0;
+        shuffleDeck();
+        showScreen('flashcard');
+    }
+
+    function shuffleDeck() {
+        // Fisher-Yates shuffle algorithm
+        for (let i = appState.currentDeck.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [appState.currentDeck[i], appState.currentDeck[j]] = [appState.currentDeck[j], appState.currentDeck[i]];
+        }
+        appState.currentIndex = 0;
+        updateFlashcard();
+    }
+
+    function flipCard() {
+        appState.isFlipped = !appState.isFlipped;
+        flashcard.classList.toggle('is-flipped');
+    }
+
+    function nextCard() {
+        if (appState.currentIndex < appState.currentDeck.length - 1) {
+            appState.currentIndex++;
+            updateFlashcard();
+        }
+    }
+
+    function prevCard() {
+        if (appState.currentIndex > 0) {
+            appState.currentIndex--;
+            updateFlashcard();
+        }
+    }
+    
+    function handleKeyDown(e) {
+        if (flashcardScreen.classList.contains('hidden')) return;
+
+        switch (e.key) {
+            case 'ArrowLeft':
+                prevCardBtn.click();
+                break;
+            case 'ArrowRight':
+                nextCardBtn.click();
+                break;
+            case ' ': // Space bar
+                e.preventDefault(); // prevent page scroll
+                flipCard();
+                break;
+        }
+    }
+
+
+    // --- Event Listeners ---
+    flashcardContainer.addEventListener('click', flipCard);
+    nextCardBtn.addEventListener('click', nextCard);
+    prevCardBtn.addEventListener('click', prevCard);
+    shuffleDeckBtn.addEventListener('click', () => {
+        // Add a small visual feedback
+        shuffleDeckBtn.classList.add('transform', 'rotate-180');
+        setTimeout(() => shuffleDeckBtn.classList.remove('transform', 'rotate-180'), 300);
+        shuffleDeck();
+    });
+    backToCategoriesBtn.addEventListener('click', () => showScreen('category'));
+    document.addEventListener('keydown', handleKeyDown);
+
+    // --- Vocabulary Data ---
+    // A subset of ~1000 words for demonstration. A full implementation would have the complete list.
+    function getVocabularyData() {
+        return [
+            // Daily Vocabulary
+            { kanji: '食べます', kana: 'たべます', romaji: 'tabemasu', meaning_id: 'Makan', category: 'Kosakata Harian' },
+            { kanji: '飲みます', kana: 'のみます', romaji: 'nomimasu', meaning_id: 'Minum', category: 'Kosakata Harian' },
+            { kanji: '見ます', kana: 'みます', romaji: 'mimasu', meaning_id: 'Melihat', category: 'Kosakata Harian' },
+            { kanji: '聞きます', kana: 'ききます', romaji: 'kikimasu', meaning_id: 'Mendengar', category: 'Kosakata Harian' },
+            { kanji: '書きます', kana: 'かきます', romaji: 'kakimasu', meaning_id: 'Menulis', category: 'Kosakata Harian' },
+            { kanji: '読みます', kana: 'よみます', romaji: 'yomimasu', meaning_id: 'Membaca', category: 'Kosakata Harian' },
+            { kanji: '行きます', kana: 'いきます', romaji: 'ikimasu', meaning_id: 'Pergi', category: 'Kosakata Harian' },
+            { kanji: '来ます', kana: 'きます', romaji: 'kimasu', meaning_id: 'Datang', category: 'Kosakata Harian' },
+            { kanji: '帰ります', kana: 'かえります', romaji: 'kaerimasu', meaning_id: 'Pulang', category: 'Kosakata Harian' },
+            { kanji: '会います', kana: 'あいます', romaji: 'aimasu', meaning_id: 'Bertemu', category: 'Kosakata Harian' },
+            { kanji: '話します', kana: 'はなします', romaji: 'hanashimasu', meaning_id: 'Berbicara', category: 'Kosakata Harian' },
+            { kanji: '買います', kana: 'かいます', romaji: 'kaimasu', meaning_id: 'Membeli', category: 'Kosakata Harian' },
+            { kanji: '売ります', kana: 'うります', romaji: 'urimasu', meaning_id: 'Menjual', category: 'Kosakata Harian' },
+            { kanji: '作ります', kana: 'つくります', romaji: 'tsukurimasu', meaning_id: 'Membuat', category: 'Kosakata Harian' },
+            { kanji: '使います', kana: 'つかいます', romaji: 'tsukaimasu', meaning_id: 'Menggunakan', category: 'Kosakata Harian' },
+            { kanji: '待ちます', kana: 'まちます', romaji: 'machimasu', meaning_id: 'Menunggu', category: 'Kosakata Harian' },
+            { kanji: '持ちます', kana: 'もちます', romaji: 'mochimasu', meaning_id: 'Membawa', category: 'Kosakata Harian' },
+            { kanji: '取ります', kana: 'とります', romaji: 'torimasu', meaning_id: 'Mengambil', category: 'Kosakata Harian' },
+            { kanji: '置きます', kana: 'おきます', romaji: 'okimasu', meaning_id: 'Meletakkan', category: 'Kosakata Harian' },
+            { kanji: '起きます', kana: 'おきます', romaji: 'okimasu', meaning_id: 'Bangun tidur', category: 'Kosakata Harian' },
+            { kanji: '寝ます', kana: 'ねます', romaji: 'nemasu', meaning_id: 'Tidur', category: 'Kosakata Harian' },
+            { kanji: '働きます', kana: 'はたらきます', romaji: 'hatarakimasu', meaning_id: 'Bekerja', category: 'Kosakata Harian' },
+            { kanji: '休みます', kana: 'やすみます', romaji: 'yasumimasu', meaning_id: 'Beristirahat', category: 'Kosakata Harian' },
+            { kanji: '勉強します', kana: 'べんきょうします', romaji: 'benkyoushimasu', meaning_id: 'Belajar', category: 'Kosakata Harian' },
+            { kanji: '終わります', kana: 'おわります', romaji: 'owarimasu', meaning_id: 'Selesai', category: 'Kosakata Harian' },
+            { kanji: '始まります', kana: 'はじまります', romaji: 'hajimarimasu', meaning_id: 'Mulai', category: 'Kosakata Harian' },
+            { kanji: '映画', kana: 'えいが', romaji: 'eiga', meaning_id: 'Film', category: 'Kosakata Harian' },
+            { kanji: '音楽', kana: 'おんがく', romaji: 'ongaku', meaning_id: 'Musik', category: 'Kosakata Harian' },
+            { kanji: 'スポーツ', kana: 'スポーツ', romaji: 'supo-tsu', meaning_id: 'Olahraga', category: 'Kosakata Harian' },
+            { kanji: '食べ物', kana: 'たべもの', romaji: 'tabemono', meaning_id: 'Makanan', category: 'Kosakata Harian' },
+            { kanji: '飲み物', kana: 'のみもの', romaji: 'nomimono', meaning_id: 'Minuman', category: 'Kosakata Harian' },
+            { kanji: '果物', kana: 'くだもの', romaji: 'kudamono', meaning_id: 'Buah-buahan', category: 'Kosakata Harian' },
+            { kanji: '野菜', kana: 'やさい', romaji: 'yasai', meaning_id: 'Sayuran', category: 'Kosakata Harian' },
+            { kanji: '肉', kana: 'にく', romaji: 'niku', meaning_id: 'Daging', category: 'Kosakata Harian' },
+            { kanji: '魚', kana: 'さかな', romaji: 'sakana', meaning_id: 'Ikan', category: 'Kosakata Harian' },
+            { kanji: '天気', kana: 'てんき', romaji: 'tenki', meaning_id: 'Cuaca', category: 'Cuaca' },
+            { kanji: '晴れ', kana: 'はれ', romaji: 'hare', meaning_id: 'Cerah', category: 'Cuaca' },
+            { kanji: '曇り', kana: 'くもり', romaji: 'kumori', meaning_id: 'Mendung', category: 'Cuaca' },
+            { kanji: '雨', kana: 'あめ', romaji: 'ame', meaning_id: 'Hujan', category: 'Cuaca' },
+            { kanji: '雪', kana: 'ゆき', romaji: 'yuki', meaning_id: 'Salju', category: 'Cuaca' },
+            { kanji: '風', kana: 'かぜ', romaji: 'kaze', meaning_id: 'Angin', category: 'Cuaca' },
+            // い-Adjectives
+            { kanji: '大きい', kana: 'おおきい', romaji: 'ookii', meaning_id: 'Besar', category: 'い-Adjective' },
+            { kanji: '小さい', kana: 'ちいさい', romaji: 'chiisai', meaning_id: 'Kecil', category: 'い-Adjective' },
+            { kanji: '新しい', kana: 'あたらしい', romaji: 'atarashii', meaning_id: 'Baru', category: 'い-Adjective' },
+            { kanji: '古い', kana: 'ふるい', romaji: 'furui', meaning_id: 'Lama', category: 'い-Adjective' },
+            { kanji: '良い', kana: 'よい / いい', romaji: 'yoi / ii', meaning_id: 'Bagus', category: 'い-Adjective' },
+            { kanji: '悪い', kana: 'わるい', romaji: 'warui', meaning_id: 'Jelek', category: 'い-Adjective' },
+            { kanji: '暑い', kana: 'あつい', romaji: 'atsui', meaning_id: 'Panas (cuaca)', category: 'い-Adjective' },
+            { kanji: '寒い', kana: 'さむい', romaji: 'samui', meaning_id: 'Dingin (cuaca)', category: 'い-Adjective' },
+            { kanji: '冷たい', kana: 'つめたい', romaji: 'tsumetai', meaning_id: 'Dingin (benda)', category: 'い-Adjective' },
+            { kanji: '難しい', kana: 'むずかしい', romaji: 'muzukashii', meaning_id: 'Sulit', category: 'い-Adjective' },
+            { kanji: '易しい', kana: 'やさしい', romaji: 'yasashii', meaning_id: 'Mudah', category: 'い-Adjective' },
+            { kanji: '高い', kana: 'たかい', romaji: 'takai', meaning_id: 'Tinggi, Mahal', category: 'い-Adjective' },
+            { kanji: '安い', kana: 'やすい', romaji: 'yasui', meaning_id: 'Murah', category: 'い-Adjective' },
+            { kanji: '低い', kana: 'ひくい', romaji: 'hikui', meaning_id: 'Rendah', category: 'い-Adjective' },
+            { kanji: '面白い', kana: 'おもしろい', romaji: 'omoshiroi', meaning_id: 'Menarik', category: 'い-Adjective' },
+            { kanji: '美味しい', kana: 'おいしい', romaji: 'oishii', meaning_id: 'Enak', category: 'い-Adjective' },
+            { kanji: '忙しい', kana: 'いそがしい', romaji: 'isogashii', meaning_id: 'Sibuk', category: 'い-Adjective' },
+            { kanji: '楽しい', kana: 'たのしい', romaji: 'tanoshii', meaning_id: 'Menyenangkan', category: 'い-Adjective' },
+            { kanji: '白い', kana: 'しろい', romaji: 'shiroi', meaning_id: 'Putih', category: 'い-Adjective' },
+            { kanji: '黒い', kana: 'くろい', romaji: 'kuroi', meaning_id: 'Hitam', category: 'い-Adjective' },
+            { kanji: '赤い', kana: 'あかい', romaji: 'akai', meaning_id: 'Merah', category: 'い-Adjective' },
+            { kanji: '青い', kana: 'あおい', romaji: 'aoi', meaning_id: 'Biru', category: 'い-Adjective' },
+            // な-Adjectives
+            { kanji: '静か', kana: 'しずか', romaji: 'shizuka(na)', meaning_id: 'Tenang, Sunyi', category: 'な-Adjective' },
+            { kanji: '有名', kana: 'ゆうめい', romaji: 'yuumei(na)', meaning_id: 'Terkenal', category: 'な-Adjective' },
+            { kanji: '親切', kana: 'しんせつ', romaji: 'shinsetsu(na)', meaning_id: 'Baik hati', category: 'な-Adjective' },
+            { kanji: '元気', kana: 'げんき', romaji: 'genki(na)', meaning_id: 'Sehat, Semangat', category: 'な-Adjective' },
+            { kanji: '暇', kana: 'ひま', romaji: 'hima(na)', meaning_id: 'Senggang', category: 'な-Adjective' },
+            { kanji: '便利', kana: 'べんり', romaji: 'benri(na)', meaning_id: 'Praktis', category: 'な-Adjective' },
+            { kanji: '綺麗', kana: 'きれい', romaji: 'kirei(na)', meaning_id: 'Cantik, Bersih', category: 'な-Adjective' },
+            { kanji: '好き', kana: 'すき', romaji: 'suki(na)', meaning_id: 'Suka', category: 'な-Adjective' },
+            { kanji: '嫌い', kana: 'きらい', romaji: 'kirai(na)', meaning_id: 'Benci', category: 'な-Adjective' },
+            { kanji: '上手', kana: 'じょうず', romaji: 'jouzu(na)', meaning_id: 'Pandai', category: 'な-Adjective' },
+            { kanji: '下手', kana: 'へた', romaji: 'heta(na)', meaning_id: 'Tidak pandai', category: 'な-Adjective' },
+            { kanji: '色々', kana: 'いろいろ', romaji: 'iroiro(na)', meaning_id: 'Bermacam-macam', category: 'な-Adjective' },
+            { kanji: '大丈夫', kana: 'だいじょうぶ', romaji: 'daijoubu(na)', meaning_id: 'Tidak apa-apa', category: 'な-Adjective' },
+            { kanji: '大切', kana: 'たいせつ', romaji: 'taisetsu(na)', meaning_id: 'Penting', category: 'な-Adjective' },
+            { kanji: 'にぎやか', kana: 'にぎやか', romaji: 'nigiyaka(na)', meaning_id: 'Ramai', category: 'な-Adjective' },
+            // Aisatsu (Greetings)
+            { kana: 'おはようございます', romaji: 'ohayou gozaimasu', meaning_id: 'Selamat pagi', category: 'Aisatsu' },
+            { kana: 'こんにちは', romaji: 'konnichiwa', meaning_id: 'Selamat siang/halo', category: 'Aisatsu' },
+            { kana: 'こんばんは', romaji: 'konbanwa', meaning_id: 'Selamat malam', category: 'Aisatsu' },
+            { kana: 'さようなら', romaji: 'sayounara', meaning_id: 'Selamat tinggal', category: 'Aisatsu' },
+            { kana: 'おやすみなさい', romaji: 'oyasuminasai', meaning_id: 'Selamat tidur', category: 'Aisatsu' },
+            { kana: 'ありがとう', romaji: 'arigatou', meaning_id: 'Terima kasih', category: 'Aisatsu' },
+            { kana: 'すみません', romaji: 'sumimasen', meaning_id: 'Maaf/Permisi', category: 'Aisatsu' },
+            { kana: 'いってきます', romaji: 'ittekimasu', meaning_id: 'Saya berangkat', category: 'Aisatsu' },
+            { kana: 'いってらっしゃい', romaji: 'itterasshai', meaning_id: 'Selamat jalan', category: 'Aisatsu' },
+            { kana: 'ただいま', romaji: 'tadaima', meaning_id: 'Saya pulang', category: 'Aisatsu' },
+            { kana: 'おかえりなさい', romaji: 'okaerinasai', meaning_id: 'Selamat datang kembali', category: 'Aisatsu' },
+            // Fukushi (Adverbs)
+            { kanji: 'たくさん', kana: 'たくさん', romaji: 'takusan', meaning_id: 'Banyak', category: 'Fukushi' },
+            { kanji: '少し', kana: 'すこし', romaji: 'sukoshi', meaning_id: 'Sedikit', category: 'Fukushi' },
+            { kanji: 'いつも', kana: 'いつも', romaji: 'itsumo', meaning_id: 'Selalu', category: 'Fukushi' },
+            { kanji: '時々', kana: 'ときどき', romaji: 'tokidoki', meaning_id: 'Kadang-kadang', category: 'Fukushi' },
+            { kanji: 'よく', kana: 'よく', romaji: 'yoku', meaning_id: 'Sering', category: 'Fukushi' },
+            { kanji: 'もう一度', kana: 'もういちど', romaji: 'mou ichido', meaning_id: 'Sekali lagi', category: 'Fukushi' },
+            { kanji: 'ゆっくり', kana: 'ゆっくり', romaji: 'yukkuri', meaning_id: 'Perlahan-lahan', category: 'Fukushi' },
+            // Numbers
+            { kanji: '一', kana: 'いち', romaji: 'ichi', meaning_id: 'Satu', category: 'Angka' },
+            { kanji: '二', kana: 'に', romaji: 'ni', meaning_id: 'Dua', category: 'Angka' },
+            { kanji: '三', kana: 'さん', romaji: 'san', meaning_id: 'Tiga', category: 'Angka' },
+            { kanji: '四', kana: 'よん/し', romaji: 'yon/shi', meaning_id: 'Empat', category: 'Angka' },
+            { kanji: '五', kana: 'ご', romaji: 'go', meaning_id: 'Lima', category: 'Angka' },
+            { kanji: '六', kana: 'ろく', romaji: 'roku', meaning_id: 'Enam', category: 'Angka' },
+            { kanji: '七', kana: 'なな/しち', romaji: 'nana/shichi', meaning_id: 'Tujuh', category: 'Angka' },
+            { kanji: '八', kana: 'はち', romaji: 'hachi', meaning_id: 'Delapan', category: 'Angka' },
+            { kanji: '九', kana: 'きゅう/く', romaji: 'kyuu/ku', meaning_id: 'Sembilan', category: 'Angka' },
+            { kanji: '十', kana: 'じゅう', romaji: 'juu', meaning_id: 'Sepuluh', category: 'Angka' },
+            { kanji: '百', kana: 'ひゃく', romaji: 'hyaku', meaning_id: 'Seratus', category: 'Angka' },
+            { kanji: '千', kana: 'せん', romaji: 'sen', meaning_id: 'Seribu', category: 'Angka' },
+            { kanji: '万', kana: 'まん', romaji: 'man', meaning_id: 'Sepuluh ribu', category: 'Angka' },
+            // Time
+            { kanji: '時', kana: 'じ', romaji: 'ji', meaning_id: 'Jam (pukul)', category: 'Waktu' },
+            { kanji: '分', kana: 'ふん/ぷん', romaji: 'fun/pun', meaning_id: 'Menit', category: 'Waktu' },
+            { kanji: '秒', kana: 'びょう', romaji: 'byou', meaning_id: 'Detik', category: 'Waktu' },
+            { kanji: '日', kana: 'にち/ひ', romaji: 'nichi/hi', meaning_id: 'Hari, Tanggal', category: 'Waktu' },
+            { kanji: '月', kana: 'げつ/がつ', romaji: 'getsu/gatsu', meaning_id: 'Bulan', category: 'Waktu' },
+            { kanji: '年', kana: 'ねん', romaji: 'nen', meaning_id: 'Tahun', category: 'Waktu' },
+            { kanji: '今日', kana: 'きょう', romaji: 'kyou', meaning_id: 'Hari ini', category: 'Waktu' },
+            { kanji: '明日', kana: 'あした', romaji: 'ashita', meaning_id: 'Besok', category: 'Waktu' },
+            { kanji: '昨日', kana: 'きのう', romaji: 'kinou', meaning_id: 'Kemarin', category: 'Waktu' },
+            // Counters
+            { kanji: '～人', kana: '～にん', romaji: '~nin', meaning_id: 'Satuan untuk orang', category: 'Counters' },
+            { kanji: '～台', kana: '～だい', romaji: '~dai', meaning_id: 'Satuan untuk mesin, kendaraan', category: 'Counters' },
+            { kanji: '～枚', kana: '～まい', romaji: '~mai', meaning_id: 'Satuan untuk benda tipis', category: 'Counters' },
+            { kanji: '～回', kana: '～かい', romaji: '~kai', meaning_id: 'Satuan untuk frekuensi (kali)', category: 'Counters' },
+            { kanji: '～冊', kana: '～さつ', romaji: '~satsu', meaning_id: 'Satuan untuk buku, majalah', category: 'Counters' },
+            { kanji: '～本', kana: '～ほん', romaji: '~hon', meaning_id: 'Satuan untuk benda panjang', category: 'Counters' },
+            // Places
+            { kanji: '学校', kana: 'がっこう', romaji: 'gakkou', meaning_id: 'Sekolah', category: 'Tempat' },
+            { kanji: '銀行', kana: 'ぎんこう', romaji: 'ginkou', meaning_id: 'Bank', category: 'Tempat' },
+            { kanji: '郵便局', kana: 'ゆうびんきょく', romaji: 'yuubinkyoku', meaning_id: 'Kantor pos', category: 'Tempat' },
+            { kanji: '図書館', kana: 'としょかん', romaji: 'toshokan', meaning_id: 'Perpustakaan', category: 'Tempat' },
+            { kanji: '病院', kana: 'びょういん', romaji: 'byouin', meaning_id: 'Rumah sakit', category: 'Tempat' },
+            { kanji: '駅', kana: 'えき', romaji: 'eki', meaning_id: 'Stasiun', category: 'Tempat' },
+            { kanji: '店', kana: 'みせ', romaji: 'mise', meaning_id: 'Toko', category: 'Tempat' },
+            // Professions
+            { kanji: '先生', kana: 'せんせい', romaji: 'sensei', meaning_id: 'Guru, Dosen', category: 'Profesi' },
+            { kanji: '学生', kana: 'がくせい', romaji: 'gakusei', meaning_id: 'Siswa, Mahasiswa', category: 'Profesi' },
+            { kanji: '会社員', kana: 'かいしゃいん', romaji: 'kaishain', meaning_id: 'Karyawan perusahaan', category: 'Profesi' },
+            { kanji: '医者', kana: 'いしゃ', romaji: 'isha', meaning_id: 'Dokter', category: 'Profesi' },
+            { kanji: '研究者', kana: 'けんきゅうしゃ', romaji: 'kenkyuusha', meaning_id: 'Peneliti', category: 'Profesi' },
+            // Family
+            { kanji: '家族', kana: 'かぞく', romaji: 'kazoku', meaning_id: 'Keluarga', category: 'Keluarga' },
+            { kanji: '父', kana: 'ちち', romaji: 'chichi', meaning_id: 'Ayah (saya)', category: 'Keluarga' },
+            { kanji: '母', kana: 'はは', romaji: 'haha', meaning_id: 'Ibu (saya)', category: 'Keluarga' },
+            { kanji: '兄', kana: 'あに', romaji: 'ani', meaning_id: 'Kakak laki-laki (saya)', category: 'Keluarga' },
+            { kanji: '姉', kana: 'あね', romaji: 'ane', meaning_id: 'Kakak perempuan (saya)', category: 'Keluarga' },
+            { kanji: '弟', kana: 'おとうと', romaji: 'otouto', meaning_id: 'Adik laki-laki (saya)', category: 'Keluarga' },
+            { kanji: '妹', kana: 'いもうと', romaji: 'imouto', meaning_id: 'Adik perempuan (saya)', category: 'Keluarga' },
+            // Body Parts
+            { kanji: '頭', kana: 'あたま', romaji: 'atama', meaning_id: 'Kepala', category: 'Bagian Tubuh' },
+            { kanji: '顔', kana: 'かお', romaji: 'kao', meaning_id: 'Wajah', category: 'Bagian Tubuh' },
+            { kanji: '目', kana: 'め', romaji: 'me', meaning_id: 'Mata', category: 'Bagian Tubuh' },
+            { kanji: '鼻', kana: 'はな', romaji: 'hana', meaning_id: 'Hidung', category: 'Bagian Tubuh' },
+            { kanji: '口', kana: 'くち', romaji: 'kuchi', meaning_id: 'Mulut', category: 'Bagian Tubuh' },
+            { kanji: '歯', kana: 'は', romaji: 'ha', meaning_id: 'Gigi', category: 'Bagian Tubuh' },
+            { kanji: '耳', kana: 'みみ', romaji: 'mimi', meaning_id: 'Telinga', category: 'Bagian Tubuh' },
+            { kanji: '手', kana: 'て', romaji: 'te', meaning_id: 'Tangan', category: 'Bagian Tubuh' },
+            { kanji: '足', kana: 'あし', romaji: 'ashi', meaning_id: 'Kaki', category: 'Bagian Tubuh' },
+            // This is a sample. To reach 1000+, more words would be added in each category.
+        ];
+    }
+
+
+    // --- App Initialization ---
+    loadVocabulary();
+});
+</script>
+</body>
+</html>
